@@ -7,7 +7,7 @@ A terminal-based profit tracking application for resellers. Track inventory, cal
 
 ## Demo
 
-https://github.com/KirshWasHere/fliptrack/assets/demo.mp4
+https://github.com/KirshWasHere/fliptrack/raw/main/demo.mp4
 
 ## Features
 
