@@ -12,6 +12,9 @@ from rich.text import Text
 import os
 from pathlib import Path
 import shutil
+import subprocess
+import webbrowser
+import time
 
 from database import Database
 from scraper import ImageScraper
@@ -64,6 +67,7 @@ class DashboardScreen(Screen):
         yield Header()
         yield Container(
             Horizontal(
+                Button("🌐 Web App", id="web-app-btn", variant="success"),
                 Button("📊 Analytics", id="analytics-btn", variant="primary"),
                 Button("💾 Export CSV", id="export-btn"),
                 Button("🔄 Backup", id="backup-btn"),
@@ -102,7 +106,9 @@ class DashboardScreen(Screen):
     
     def on_button_pressed(self, event: Button.Pressed):
         """Handle button clicks in action bar"""
-        if event.button.id == "analytics-btn":
+        if event.button.id == "web-app-btn":
+            self.action_launch_web_app()
+        elif event.button.id == "analytics-btn":
             self.action_analytics()
         elif event.button.id == "export-btn":
             self.action_export_csv()
@@ -440,6 +446,32 @@ ROI: {stats['roi']:.1f}%"""
     def action_analytics(self):
         """Open analytics screen"""
         self.app.push_screen(AnalyticsScreen())
+    
+    def action_launch_web_app(self):
+        """Launch the web application"""
+        try:
+            import subprocess
+            import webbrowser
+            import time
+            
+            self.app.notify("Starting web app...")
+            
+            # Start the web app in a subprocess
+            if os.name == 'nt':  # Windows
+                subprocess.Popen(['python', 'web_app.py'], 
+                               creationflags=subprocess.CREATE_NEW_CONSOLE)
+            else:  # macOS/Linux
+                subprocess.Popen(['python3', 'web_app.py'])
+            
+            # Wait a moment for the server to start
+            time.sleep(2)
+            
+            # Open browser
+            webbrowser.open('http://127.0.0.1:5000')
+            
+            self.app.notify("Web app launched! Opening browser...")
+        except Exception as e:
+            self.app.notify(f"Failed to launch web app: {str(e)}", severity="error")
     
     def action_quit(self):
         self.app.exit()
