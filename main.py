@@ -109,10 +109,11 @@ class DashboardScreen(Screen):
             items = db.get_all_items(search_query=search_query, status_filter=status_filter)
             stats = db.get_summary_stats()
             
-            # Update stats panel
-            stats_text = f"""Items: {stats['total_items']} | Showing: {len(items)}
-Potential Profit: ${stats['total_potential_profit']:.2f}
-Actual Profit: ${stats['total_actual_profit']:.2f}"""
+            # Update stats panel with enhanced info
+            stats_text = f"""Items: {stats['total_items']} (Draft: {stats['draft_count']}, Listed: {stats['listed_count']}, Sold: {stats['sold_count']}) | Showing: {len(items)}
+Inventory Value: ${stats['inventory_value']:.2f} | Total Invested: ${stats['total_invested']:.2f}
+Potential Profit: ${stats['total_potential_profit']:.2f} | Actual Profit: ${stats['total_actual_profit']:.2f}
+ROI: {stats['roi']:.1f}%"""
             
             stats_panel = self.query_one("#stats-panel", Static)
             stats_panel.update(Panel(stats_text, title="Summary", border_style="cyan"))
@@ -474,6 +475,15 @@ class ItemFormScreen(Screen):
             Input(id="target_price", placeholder="0.00", type="number"),
             Label("Product URL:"),
             Input(id="product_url", placeholder="https://..."),
+            Label("[bold]Expenses:[/]"),
+            Label("Listing Fee:"),
+            Input(id="listing_fee", placeholder="0.00", type="number"),
+            Label("Processing Fee (PayPal, Stripe, etc.):"),
+            Input(id="processing_fee", placeholder="0.00", type="number"),
+            Label("Storage Cost:"),
+            Input(id="storage_cost", placeholder="0.00", type="number"),
+            Label("Other Expenses:"),
+            Input(id="other_expenses", placeholder="0.00", type="number"),
             Label("Status:"),
             RadioSet(
                 RadioButton("Draft", id="status_draft", value=True),
@@ -483,6 +493,16 @@ class ItemFormScreen(Screen):
             ),
             Label("Final Sold Price (if Sold):"),
             Input(id="final_sold_price", placeholder="0.00", type="number", disabled=True),
+            Label("Sales Channel (if Sold):"),
+            Select(
+                [("None", ""), ("eBay", "eBay"), ("StockX", "StockX"), ("Grailed", "Grailed"), 
+                 ("Local", "Local"), ("Facebook", "Facebook"), ("Mercari", "Mercari"), ("Other", "Other")],
+                id="sales_channel",
+                allow_blank=True,
+                disabled=True
+            ),
+            Label("Listing URL (if Sold):"),
+            Input(id="listing_url", placeholder="https://...", disabled=True),
             Static(id="profit-display"),
             Static(id="image-list"),
             Horizontal(
@@ -528,8 +548,20 @@ class ItemFormScreen(Screen):
             if item.get('provider_id'):
                 self.query_one("#provider", Select).value = str(item['provider_id'])
             
+            # Set expenses
+            self.query_one("#listing_fee", Input).value = str(item.get('listing_fee', 0))
+            self.query_one("#processing_fee", Input).value = str(item.get('processing_fee', 0))
+            self.query_one("#storage_cost", Input).value = str(item.get('storage_cost', 0))
+            self.query_one("#other_expenses", Input).value = str(item.get('other_expenses', 0))
+            
             if item.get('final_sold_price'):
                 self.query_one("#final_sold_price", Input).value = str(item['final_sold_price'])
+            
+            # Set sales channel and listing URL
+            if item.get('sales_channel'):
+                self.query_one("#sales_channel", Select).value = item['sales_channel']
+            if item.get('listing_url'):
+                self.query_one("#listing_url", Input).value = item['listing_url']
             
             # Set status
             status = item.get('status', 'Draft')
@@ -552,12 +584,18 @@ class ItemFormScreen(Screen):
     def on_radio_set_changed(self, event: RadioSet.Changed):
         selected = event.pressed.id if event.pressed else None
         final_price_input = self.query_one("#final_sold_price", Input)
+        sales_channel_select = self.query_one("#sales_channel", Select)
+        listing_url_input = self.query_one("#listing_url", Input)
         
         if selected == "status_sold":
             final_price_input.disabled = False
+            sales_channel_select.disabled = False
+            listing_url_input.disabled = False
         else:
             final_price_input.disabled = True
             final_price_input.value = ""
+            sales_channel_select.disabled = True
+            listing_url_input.disabled = True
         
         self.update_profit_display()
     
@@ -565,11 +603,17 @@ class ItemFormScreen(Screen):
         try:
             purchase = float(self.query_one("#purchase_price", Input).value or 0)
             shipping = float(self.query_one("#shipping_cost", Input).value or 0)
+            listing_fee = float(self.query_one("#listing_fee", Input).value or 0)
+            processing_fee = float(self.query_one("#processing_fee", Input).value or 0)
+            storage_cost = float(self.query_one("#storage_cost", Input).value or 0)
+            other_expenses = float(self.query_one("#other_expenses", Input).value or 0)
             target = float(self.query_one("#target_price", Input).value or 0)
             
-            potential_profit = target - purchase - shipping
+            total_expenses = purchase + shipping + listing_fee + processing_fee + storage_cost + other_expenses
+            potential_profit = target - total_expenses
             
-            profit_text = f"Potential: "
+            profit_text = f"Total Expenses: ${total_expenses:.2f}\n"
+            profit_text += f"Potential: "
             if potential_profit >= 0:
                 profit_text += f"[green]${potential_profit:.2f}[/]"
             else:
@@ -580,14 +624,18 @@ class ItemFormScreen(Screen):
             if status_sold:
                 final_price = float(self.query_one("#final_sold_price", Input).value or 0)
                 if final_price > 0:
-                    actual_profit = final_price - purchase - shipping
+                    actual_profit = final_price - total_expenses
                     profit_text += f"\nActual: "
                     if actual_profit >= 0:
                         profit_text += f"[green]${actual_profit:.2f}[/]"
                     else:
                         profit_text += f"[red]${actual_profit:.2f}[/]"
+                    
+                    # Show margin
+                    margin = (actual_profit / final_price * 100) if final_price > 0 else 0
+                    profit_text += f"\nMargin: {margin:.1f}%"
             
-            self.query_one("#profit-display", Static).update(Panel(profit_text, title="Profit"))
+            self.query_one("#profit-display", Static).update(Panel(profit_text, title="Profit Analysis"))
         except:
             pass
     
@@ -770,7 +818,35 @@ class ItemFormScreen(Screen):
             else:
                 status = "Sold"
             
+            # Validate expenses
+            listing_fee_str = self.query_one("#listing_fee", Input).value
+            is_valid, listing_fee, error_msg = validate_price(listing_fee_str)
+            if not is_valid:
+                self.app.notify(f"Listing fee: {error_msg}", severity="error")
+                return
+            
+            processing_fee_str = self.query_one("#processing_fee", Input).value
+            is_valid, processing_fee, error_msg = validate_price(processing_fee_str)
+            if not is_valid:
+                self.app.notify(f"Processing fee: {error_msg}", severity="error")
+                return
+            
+            storage_cost_str = self.query_one("#storage_cost", Input).value
+            is_valid, storage_cost, error_msg = validate_price(storage_cost_str)
+            if not is_valid:
+                self.app.notify(f"Storage cost: {error_msg}", severity="error")
+                return
+            
+            other_expenses_str = self.query_one("#other_expenses", Input).value
+            is_valid, other_expenses, error_msg = validate_price(other_expenses_str)
+            if not is_valid:
+                self.app.notify(f"Other expenses: {error_msg}", severity="error")
+                return
+            
             final_sold_price = None
+            sales_channel = ""
+            listing_url = ""
+            
             if status == "Sold":
                 final_str = self.query_one("#final_sold_price", Input).value
                 is_valid, final_sold_price, error_msg = validate_price(final_str)
@@ -782,6 +858,9 @@ class ItemFormScreen(Screen):
                     self.app.notify("Final sold price required for sold items", severity="error")
                     self.query_one("#final_sold_price", Input).focus()
                     return
+                
+                sales_channel = self.query_one("#sales_channel", Select).value or ""
+                listing_url = self.query_one("#listing_url", Input).value.strip()
             
             # Download and save images
             selected_images = []
@@ -825,7 +904,13 @@ class ItemFormScreen(Screen):
                 'final_sold_price': final_sold_price,
                 'image_urls_cache': self.scraped_images,
                 'selected_images': selected_images,
-                'provider_id': provider_id
+                'provider_id': provider_id,
+                'listing_fee': listing_fee,
+                'processing_fee': processing_fee,
+                'storage_cost': storage_cost,
+                'other_expenses': other_expenses,
+                'sales_channel': sales_channel,
+                'listing_url': listing_url
             }
             
             try:

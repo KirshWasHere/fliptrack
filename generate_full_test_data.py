@@ -222,6 +222,19 @@ def generate_items(count=30, provider_ids=None):
         
         product_url = random.choice(SAMPLE_URLS) if random.random() > 0.3 else ""
         
+        # Generate expenses
+        listing_fee = round(target_price * random.uniform(0.05, 0.13), 2) if random.random() > 0.3 else 0  # 5-13% listing fee
+        processing_fee = round(target_price * random.uniform(0.025, 0.035), 2) if random.random() > 0.4 else 0  # 2.5-3.5% processing
+        storage_cost = round(random.uniform(0, 10), 2) if random.random() > 0.7 else 0
+        other_expenses = round(random.uniform(0, 15), 2) if random.random() > 0.8 else 0
+        
+        # Sales channel and listing URL for sold items
+        sales_channel = ""
+        listing_url = ""
+        if status == "Sold":
+            sales_channel = random.choice(["eBay", "StockX", "Grailed", "Local", "Facebook", "Mercari"])
+            listing_url = random.choice(SAMPLE_URLS) if random.random() > 0.3 else ""
+        
         item_data = {
             'item_name': item_name,
             'category': category,
@@ -233,16 +246,24 @@ def generate_items(count=30, provider_ids=None):
             'final_sold_price': final_sold_price,
             'image_urls_cache': [],
             'selected_images': [],
-            'provider_id': provider_id
+            'provider_id': provider_id,
+            'listing_fee': listing_fee,
+            'processing_fee': processing_fee,
+            'storage_cost': storage_cost,
+            'other_expenses': other_expenses,
+            'sales_channel': sales_channel,
+            'listing_url': listing_url
         }
         
         try:
             item_id = db.add_item(item_data)
             created_items.append(item_id)
             
-            potential_profit = target_price - purchase_price - shipping_cost
+            total_expenses = purchase_price + shipping_cost + listing_fee + processing_fee + storage_cost + other_expenses
+            potential_profit = target_price - total_expenses
             provider_text = f" | Provider: {provider_id}" if provider_id else ""
-            print(f"✓ {item_name[:40]:<40} | {status:<7} | ${potential_profit:>7.2f}{provider_text}")
+            channel_text = f" | {sales_channel}" if sales_channel else ""
+            print(f"✓ {item_name[:40]:<40} | {status:<7} | ${potential_profit:>7.2f}{provider_text}{channel_text}")
         except Exception as e:
             print(f"✗ Failed to create {item_name}: {e}")
     
