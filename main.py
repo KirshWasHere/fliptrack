@@ -53,6 +53,7 @@ class DashboardScreen(Screen):
         Binding("a", "add_item", "Add Item"),
         Binding("e", "edit_item", "Edit Item"),
         Binding("d", "delete_item", "Delete Item"),
+        Binding("p", "providers", "Providers"),
         Binding("r", "generate_report", "Generate Report"),
         Binding("o", "open_report", "Open Report"),
         Binding("m", "master_index", "Master Index"),
@@ -416,6 +417,12 @@ Actual Profit: ${stats['total_actual_profit']:.2f}"""
             handle_confirm
         )
     
+    def action_providers(self):
+        """Open providers screen"""
+        def check_refresh(result):
+            self.refresh_dashboard()
+        self.app.push_screen(ProvidersScreen(), check_refresh)
+    
     def action_quit(self):
         self.app.exit()
 
@@ -446,6 +453,12 @@ class ItemFormScreen(Screen):
                 [("General", "General"), ("Sneakers", "Sneakers"), ("Electronics", "Electronics"), ("Books", "Books")],
                 id="category",
                 value="General"
+            ),
+            Label("Provider (optional):"),
+            Select(
+                [("None", None)],
+                id="provider",
+                allow_blank=True
             ),
             Horizontal(
                 Button("Scrape Images", id="scrape-btn", variant="primary"),
@@ -482,9 +495,23 @@ class ItemFormScreen(Screen):
         yield Footer()
     
     def on_mount(self):
+        self.load_providers()
         if self.mode == "edit" and self.item_id:
             self.load_item_data()
         self.update_profit_display()
+    
+    def load_providers(self):
+        """Load providers into dropdown"""
+        db = Database()
+        providers = db.get_all_providers()
+        provider_select = self.query_one("#provider", Select)
+        
+        # Build options list
+        options = [("None", None)]
+        for provider in providers:
+            options.append((provider['name'], str(provider['id'])))
+        
+        provider_select.set_options(options)
     
     def load_item_data(self):
         db = Database()
@@ -496,6 +523,10 @@ class ItemFormScreen(Screen):
             self.query_one("#shipping_cost", Input).value = str(item['shipping_cost'])
             self.query_one("#target_price", Input).value = str(item['target_price'])
             self.query_one("#product_url", Input).value = item.get('product_url', '')
+            
+            # Set provider
+            if item.get('provider_id'):
+                self.query_one("#provider", Select).value = str(item['provider_id'])
             
             if item.get('final_sold_price'):
                 self.query_one("#final_sold_price", Input).value = str(item['final_sold_price'])
@@ -727,6 +758,10 @@ class ItemFormScreen(Screen):
             
             category = self.query_one("#category", Select).value
             
+            # Get provider
+            provider_value = self.query_one("#provider", Select).value
+            provider_id = int(provider_value) if provider_value and provider_value != "None" else None
+            
             # Get status
             if self.query_one("#status_draft", RadioButton).value:
                 status = "Draft"
@@ -789,7 +824,8 @@ class ItemFormScreen(Screen):
                 'status': status,
                 'final_sold_price': final_sold_price,
                 'image_urls_cache': self.scraped_images,
-                'selected_images': selected_images
+                'selected_images': selected_images,
+                'provider_id': provider_id
             }
             
             try:
@@ -830,6 +866,326 @@ class ItemFormScreen(Screen):
     
     def action_save(self):
         self.save_item()
+
+
+class ProvidersScreen(Screen):
+    BINDINGS = [
+        Binding("a", "add_provider", "Add Provider"),
+        Binding("e", "edit_provider", "Edit Provider"),
+        Binding("d", "delete_provider", "Delete Provider"),
+        Binding("v", "view_items", "View Items"),
+        Binding("ctrl+d", "delete_all_providers", "Delete All Providers"),
+        Binding("escape", "back", "Back"),
+    ]
+    
+    def compose(self) -> ComposeResult:
+        yield Header()
+        yield Container(
+            Static(id="provider-stats-panel"),
+            Input(placeholder="Search providers...", id="provider-search"),
+            DataTable(id="providers-table"),
+            id="providers-container"
+        )
+        yield Footer()
+    
+    def on_mount(self) -> None:
+        self.refresh_providers()
+    
+    def on_input_changed(self, event: Input.Changed):
+        if event.input.id == "provider-search":
+            self.refresh_providers()
+    
+    def refresh_providers(self):
+        try:
+            db = Database()
+            search_query = self.query_one("#provider-search", Input).value
+            providers = db.get_all_providers(search_query=search_query)
+            
+            # Update stats
+            stats_text = f"Total Providers: {len(providers)}"
+            stats_panel = self.query_one("#provider-stats-panel", Static)
+            stats_panel.update(Panel(stats_text, title="Providers", border_style="cyan"))
+            
+            # Update table
+            table = self.query_one("#providers-table", DataTable)
+            table.clear(columns=True)
+            table.add_columns("ID", "Name", "Contact", "Phone", "Email", "Items")
+            
+            for provider in providers:
+                items = db.get_provider_items(provider['id'])
+                table.add_row(
+                    str(provider['id']),
+                    provider['name'][:30],
+                    provider.get('contact_person', '')[:20],
+                    provider.get('phone', '')[:15],
+                    provider.get('email', '')[:25],
+                    str(len(items))
+                )
+            
+            if providers:
+                table.cursor_type = "row"
+        except Exception as e:
+            self.app.notify(f"Error loading providers: {str(e)}", severity="error")
+    
+    def action_add_provider(self):
+        def check_refresh(result):
+            self.refresh_providers()
+        self.app.push_screen(ProviderFormScreen(mode="add"), check_refresh)
+    
+    def action_edit_provider(self):
+        table = self.query_one("#providers-table", DataTable)
+        if table.row_count > 0:
+            row_key = table.cursor_row
+            if row_key is not None:
+                provider_id = int(table.get_row_at(row_key)[0])
+                def check_refresh(result):
+                    self.refresh_providers()
+                self.app.push_screen(ProviderFormScreen(mode="edit", provider_id=provider_id), check_refresh)
+    
+    def action_delete_provider(self):
+        table = self.query_one("#providers-table", DataTable)
+        if table.row_count > 0:
+            row_key = table.cursor_row
+            if row_key is not None:
+                provider_id = int(table.get_row_at(row_key)[0])
+                provider_name = table.get_row_at(row_key)[1]
+                
+                def handle_confirm(confirmed: bool):
+                    if confirmed:
+                        try:
+                            db = Database()
+                            db.delete_provider(provider_id)
+                            self.refresh_providers()
+                            self.app.notify(f"Provider deleted successfully!")
+                        except Exception as e:
+                            self.app.notify(f"Error deleting provider: {str(e)}", severity="error")
+                
+                self.app.push_screen(
+                    ConfirmDialog(f"Delete provider '{provider_name}'?\nItems will not be deleted.", "Confirm Delete"),
+                    handle_confirm
+                )
+    
+    def action_view_items(self):
+        """View items from selected provider"""
+        table = self.query_one("#providers-table", DataTable)
+        if table.row_count > 0:
+            row_key = table.cursor_row
+            if row_key is not None:
+                provider_id = int(table.get_row_at(row_key)[0])
+                provider_name = table.get_row_at(row_key)[1]
+                self.app.push_screen(ProviderItemsScreen(provider_id, provider_name))
+    
+    def action_delete_all_providers(self):
+        """Delete all providers"""
+        db = Database()
+        providers = db.get_all_providers()
+        
+        if not providers:
+            self.app.notify("No providers to delete", severity="warning")
+            return
+        
+        provider_count = len(providers)
+        
+        def handle_confirm(confirmed: bool):
+            if confirmed:
+                try:
+                    db = Database()
+                    providers = db.get_all_providers()
+                    
+                    deleted_count = 0
+                    error_count = 0
+                    
+                    for provider in providers:
+                        try:
+                            db.delete_provider(provider['id'])
+                            deleted_count += 1
+                        except Exception as e:
+                            error_count += 1
+                            print(f"Failed to delete provider {provider['id']}: {e}")
+                    
+                    self.refresh_providers()
+                    
+                    if error_count > 0:
+                        self.app.notify(f"Deleted {deleted_count} providers ({error_count} errors)", severity="warning")
+                    else:
+                        self.app.notify(f"✓ Deleted all {deleted_count} providers")
+                        
+                except Exception as e:
+                    self.app.notify(f"Error deleting providers: {str(e)}", severity="error")
+        
+        self.app.push_screen(
+            ConfirmDialog(
+                f"Delete ALL {provider_count} providers?\n\nItems will NOT be deleted.\nProvider links will be removed from items.\n\nThis CANNOT be undone!",
+                "⚠️ DELETE ALL PROVIDERS"
+            ),
+            handle_confirm
+        )
+    
+    def action_back(self):
+        self.dismiss(True)
+
+
+class ProviderFormScreen(Screen):
+    BINDINGS = [
+        Binding("escape", "cancel", "Cancel"),
+        Binding("ctrl+s", "save", "Save"),
+    ]
+    
+    def __init__(self, mode="add", provider_id=None):
+        super().__init__()
+        self.mode = mode
+        self.provider_id = provider_id
+    
+    def compose(self) -> ComposeResult:
+        title = "Add New Provider" if self.mode == "add" else f"Edit Provider #{self.provider_id}"
+        
+        yield Header()
+        yield ScrollableContainer(
+            Label(f"[bold cyan]{title}[/]"),
+            Label("Provider Name:"),
+            Input(id="provider_name", placeholder="Enter provider name"),
+            Label("Contact Person:"),
+            Input(id="contact_person", placeholder="Contact name (optional)"),
+            Label("Phone:"),
+            Input(id="phone", placeholder="Phone number (optional)"),
+            Label("Email:"),
+            Input(id="email", placeholder="Email address (optional)"),
+            Label("Website:"),
+            Input(id="website", placeholder="https://... (optional)"),
+            Label("Tags:"),
+            Input(id="tags", placeholder="e.g., wholesale, liquidation (optional)"),
+            Label("Notes:"),
+            Input(id="notes", placeholder="Additional notes (optional)"),
+            Horizontal(
+                Button("Save", id="save-btn", variant="success"),
+                Button("Cancel", id="cancel-btn", variant="error"),
+                classes="button-row"
+            ),
+            id="provider-form-container"
+        )
+        yield Footer()
+    
+    def on_mount(self):
+        if self.mode == "edit" and self.provider_id:
+            self.load_provider_data()
+    
+    def load_provider_data(self):
+        db = Database()
+        provider = db.get_provider(self.provider_id)
+        if provider:
+            self.query_one("#provider_name", Input).value = provider['name']
+            self.query_one("#contact_person", Input).value = provider.get('contact_person', '')
+            self.query_one("#phone", Input).value = provider.get('phone', '')
+            self.query_one("#email", Input).value = provider.get('email', '')
+            self.query_one("#website", Input).value = provider.get('website', '')
+            self.query_one("#tags", Input).value = provider.get('tags', '')
+            self.query_one("#notes", Input).value = provider.get('notes', '')
+    
+    def on_button_pressed(self, event: Button.Pressed):
+        if event.button.id == "save-btn":
+            self.save_provider()
+        elif event.button.id == "cancel-btn":
+            self.action_cancel()
+    
+    def save_provider(self):
+        try:
+            provider_name = self.query_one("#provider_name", Input).value
+            
+            if not provider_name or provider_name.strip() == "":
+                self.app.notify("Provider name is required!", severity="error")
+                self.query_one("#provider_name", Input).focus()
+                return
+            
+            provider_data = {
+                'name': provider_name.strip(),
+                'contact_person': self.query_one("#contact_person", Input).value.strip(),
+                'phone': self.query_one("#phone", Input).value.strip(),
+                'email': self.query_one("#email", Input).value.strip(),
+                'website': self.query_one("#website", Input).value.strip(),
+                'tags': self.query_one("#tags", Input).value.strip(),
+                'notes': self.query_one("#notes", Input).value.strip()
+            }
+            
+            db = Database()
+            if self.mode == "add":
+                provider_id = db.add_provider(provider_data)
+                self.app.notify(f"Provider added successfully! ID: {provider_id}")
+            else:
+                db.update_provider(self.provider_id, provider_data)
+                self.app.notify(f"Provider updated successfully!")
+            
+            self.dismiss(True)
+        except Exception as e:
+            self.app.notify(f"Error saving provider: {str(e)}", severity="error")
+    
+    def action_cancel(self):
+        self.dismiss(False)
+    
+    def action_save(self):
+        self.save_provider()
+
+
+class ProviderItemsScreen(Screen):
+    BINDINGS = [
+        Binding("escape", "back", "Back"),
+    ]
+    
+    def __init__(self, provider_id: int, provider_name: str):
+        super().__init__()
+        self.provider_id = provider_id
+        self.provider_name = provider_name
+    
+    def compose(self) -> ComposeResult:
+        yield Header()
+        yield Container(
+            Static(id="provider-items-stats"),
+            DataTable(id="provider-items-table"),
+            id="provider-items-container"
+        )
+        yield Footer()
+    
+    def on_mount(self):
+        self.refresh_items()
+    
+    def refresh_items(self):
+        try:
+            db = Database()
+            items = db.get_provider_items(self.provider_id)
+            stats = db.get_provider_stats(self.provider_id)
+            
+            # Update stats
+            stats_text = f"""Provider: {self.provider_name}
+Total Items: {stats['total_items']} | Sold: {stats['sold_count']}
+Total Spent: ${stats['total_spent']:.2f}
+Potential Profit: ${stats['total_potential_profit']:.2f}
+Actual Profit: ${stats['total_actual_profit']:.2f}"""
+            
+            stats_panel = self.query_one("#provider-items-stats", Static)
+            stats_panel.update(Panel(stats_text, title="Provider Stats", border_style="cyan"))
+            
+            # Update table
+            table = self.query_one("#provider-items-table", DataTable)
+            table.clear(columns=True)
+            table.add_columns("ID", "Item Name", "Status", "Purchase", "Target", "Profit")
+            
+            for item in items:
+                potential_profit = item['target_price'] - item['purchase_price'] - item['shipping_cost']
+                table.add_row(
+                    str(item['id']),
+                    item['item_name'][:40],
+                    item['status'],
+                    f"${item['purchase_price']:.2f}",
+                    f"${item['target_price']:.2f}",
+                    f"${potential_profit:.2f}"
+                )
+            
+            if items:
+                table.cursor_type = "row"
+        except Exception as e:
+            self.app.notify(f"Error loading items: {str(e)}", severity="error")
+    
+    def action_back(self):
+        self.dismiss()
 
 
 class ResellingTrackerApp(App):
@@ -938,6 +1294,47 @@ class ResellingTrackerApp(App):
     
     #dialog-buttons Button {
         min-width: 10;
+    }
+    
+    /* Providers Screen */
+    #providers-container {
+        height: 100%;
+        padding: 1;
+    }
+    
+    #provider-stats-panel {
+        height: auto;
+        margin-bottom: 1;
+    }
+    
+    #provider-search {
+        margin-bottom: 1;
+    }
+    
+    #providers-table {
+        height: 1fr;
+        border: solid $primary;
+    }
+    
+    #provider-form-container {
+        width: 100%;
+        height: 100%;
+        padding: 2;
+    }
+    
+    #provider-items-container {
+        height: 100%;
+        padding: 1;
+    }
+    
+    #provider-items-stats {
+        height: auto;
+        margin-bottom: 1;
+    }
+    
+    #provider-items-table {
+        height: 1fr;
+        border: solid $primary;
     }
     """
     

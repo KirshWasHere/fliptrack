@@ -14,11 +14,24 @@ class ReportGenerator:
     def generate_report(self, item: Dict) -> str:
         """Generate a self-contained HTML report for an item"""
         try:
+            from database import Database
+            
             # Calculate profits
             potential_profit = item['target_price'] - item['purchase_price'] - item['shipping_cost']
             actual_profit = 0
             if item['status'] == 'Sold' and item.get('final_sold_price'):
                 actual_profit = item['final_sold_price'] - item['purchase_price'] - item['shipping_cost']
+            
+            # Get provider info if exists
+            provider_name = None
+            if item.get('provider_id'):
+                try:
+                    db = Database()
+                    provider = db.get_provider(item['provider_id'])
+                    if provider:
+                        provider_name = provider['name']
+                except Exception as e:
+                    print(f"Warning: Failed to get provider: {e}")
             
             # Generate QR code for product URL
             qr_code_base64 = ""
@@ -48,7 +61,8 @@ class ReportGenerator:
                 potential_profit=potential_profit,
                 actual_profit=actual_profit,
                 qr_code=qr_code_base64,
-                images=embedded_images
+                images=embedded_images,
+                provider_name=provider_name
             )
             
             # Save report
@@ -271,6 +285,16 @@ class ReportGenerator:
         </div>
         
         <div class="content">
+            {% if provider_name %}
+            <div class="section">
+                <h2>Provider</h2>
+                <div class="info-item">
+                    <label>Purchased From</label>
+                    <div class="value">{{ provider_name }}</div>
+                </div>
+            </div>
+            {% endif %}
+            
             <div class="section">
                 <h2>Financial Details</h2>
                 <div class="info-grid">
