@@ -878,7 +878,13 @@ class ItemFormScreen(Screen):
             
             # Get provider
             provider_value = self.query_one("#provider", Select).value
-            provider_id = int(provider_value) if provider_value and provider_value != "None" else None
+            # Handle NoSelection, None, empty string, or "None" string
+            provider_id = None
+            if provider_value and str(provider_value) not in ("None", "NoSelection"):
+                try:
+                    provider_id = int(provider_value)
+                except (ValueError, TypeError):
+                    provider_id = None
             
             # Get status
             if self.query_one("#status_draft", RadioButton).value:
@@ -929,13 +935,15 @@ class ItemFormScreen(Screen):
                     self.query_one("#final_sold_price", Input).focus()
                     return
                 
-                sales_channel = self.query_one("#sales_channel", Select).value or ""
+                sales_channel_value = self.query_one("#sales_channel", Select).value
+                sales_channel = str(sales_channel_value) if sales_channel_value and str(sales_channel_value) != "NoSelection" else ""
                 listing_url = self.query_one("#listing_url", Input).value.strip()
             
             # Get notes/tags
             tags = self.query_one("#tags", Input).value.strip()
             notes = self.query_one("#notes", Input).value.strip()
-            condition = self.query_one("#condition", Select).value or ""
+            condition_value = self.query_one("#condition", Select).value
+            condition = str(condition_value) if condition_value and str(condition_value) != "NoSelection" else ""
             storage_location = self.query_one("#storage_location", Input).value.strip()
             
             # Download and save images
