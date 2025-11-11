@@ -5,6 +5,10 @@ A terminal-based profit tracking application for resellers. Track inventory, cal
 ![Python](https://img.shields.io/badge/python-3.8+-blue.svg)
 ![License](https://img.shields.io/badge/license-MIT-green.svg)
 
+## Demo
+
+https://github.com/KirshWasHere/fliptrack/assets/demo.mp4
+
 ## Features
 
 - Terminal UI with keyboard shortcuts
