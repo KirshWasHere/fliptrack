@@ -13,14 +13,18 @@ A terminal-based profit tracking application for resellers. Track inventory, cal
 
 ## Features
 
-- Terminal UI with keyboard shortcuts
+- **Dual Interface**: Terminal UI + Web Dashboard
 - Profit tracking with automatic calculations
 - Item management (add, edit, delete)
 - Image scraping from product sites
+- Image upload from device (web)
 - HTML report generation with dark mode
 - Search and filter functionality
 - Data validation
 - CSV export and backup system
+- Provider/supplier tracking
+- Analytics and tax reports
+- Mobile-responsive web interface
 - Comprehensive test suite
 
 ## Installation
@@ -38,6 +42,15 @@ git clone https://github.com/KirshWasHere/fliptrack.git
 cd fliptrack
 pip install -r requirements.txt
 python main.py
+```
+
+**Web Dashboard:**
+```bash
+# Windows
+run_web.bat
+
+# macOS/Linux
+./run_web.sh
 ```
 
 **Requirements:**
@@ -128,10 +141,30 @@ python export_utils.py backup [backup_dir]
 python export_utils.py restore backup.json
 ```
 
+## Web Dashboard
+
+Access FlipTrack from any device with the web dashboard:
+
+```bash
+# Windows
+run_web.bat
+
+# macOS/Linux
+./run_web.sh
+```
+
+Then open: **http://localhost:5000**
+
+Features:
+- Mobile-responsive design
+- Add/edit items with image upload
+- Search and filter
+- Analytics and reports
+- Tax report generation
+- Access from any device on your network
+
 ## Documentation
 
-- [INSTALL.md](INSTALL.md) - Installation guide
-- [QUICK_REFERENCE.md](QUICK_REFERENCE.md) - Shortcuts and tips
 - [CONTRIBUTING.md](CONTRIBUTING.md) - Developer guide
 - [CHANGELOG.md](CHANGELOG.md) - Version history
 

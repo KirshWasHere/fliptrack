@@ -23,14 +23,14 @@ def test(name):
             try:
                 print(f"Testing {name}...", end=" ")
                 func()
-                print("✓ PASS")
+                print("[PASS]")
                 tests_passed += 1
             except AssertionError as e:
-                print(f"✗ FAIL: {e}")
+                print(f"[FAIL]: {e}")
                 tests_failed += 1
                 test_errors.append((name, str(e)))
             except Exception as e:
-                print(f"✗ ERROR: {e}")
+                print(f"[ERROR]: {e}")
                 tests_failed += 1
                 test_errors.append((name, f"Error: {e}"))
         return wrapper

@@ -1,0 +1,88 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - FlipTrack{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <!-- Stats Grid -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div class="bg-dark-surface border border-dark-border rounded-lg p-6">
+            <div class="text-dark-muted text-sm font-medium">Total Items</div>
+            <div class="mt-2 text-3xl font-bold text-white">{{ stats.total_items }}</div>
+            <div class="mt-1 text-sm text-dark-muted">
+                Draft: {{ stats.draft_count }} | Listed: {{ stats.listed_count }} | Sold: {{ stats.sold_count }}
+            </div>
+        </div>
+        
+        <div class="bg-dark-surface border border-dark-border rounded-lg p-6">
+            <div class="text-dark-muted text-sm font-medium">Inventory Value</div>
+            <div class="mt-2 text-3xl font-bold text-blue-400">${{ "%.2f"|format(stats.inventory_value) }}</div>
+            <div class="mt-1 text-sm text-dark-muted">Money tied up</div>
+        </div>
+        
+        <div class="bg-dark-surface border border-dark-border rounded-lg p-6">
+            <div class="text-dark-muted text-sm font-medium">Total Profit</div>
+            <div class="mt-2 text-3xl font-bold text-green-400">${{ "%.2f"|format(stats.total_actual_profit) }}</div>
+            <div class="mt-1 text-sm text-dark-muted">From sold items</div>
+        </div>
+        
+        <div class="bg-dark-surface border border-dark-border rounded-lg p-6">
+            <div class="text-dark-muted text-sm font-medium">ROI</div>
+            <div class="mt-2 text-3xl font-bold text-yellow-400">{{ "%.1f"|format(stats.roi) }}%</div>
+            <div class="mt-1 text-sm text-dark-muted">Return on investment</div>
+        </div>
+    </div>
+
+    <!-- Recent Items -->
+    <div class="bg-dark-surface border border-dark-border rounded-lg">
+        <div class="px-6 py-4 border-b border-dark-border">
+            <h2 class="text-xl font-bold text-white">Recent Items</h2>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-dark-border">
+                <thead class="bg-dark-bg">
+                    <tr>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-dark-muted uppercase tracking-wider">Item</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-dark-muted uppercase tracking-wider">Status</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-dark-muted uppercase tracking-wider">Purchase</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-dark-muted uppercase tracking-wider">Target</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-dark-muted uppercase tracking-wider">Profit</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-dark-muted uppercase tracking-wider">Actions</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-dark-border">
+                    {% for item in recent_items %}
+                    {% set total_expenses = item.purchase_price + item.shipping_cost + item.get('listing_fee', 0) + item.get('processing_fee', 0) + item.get('storage_cost', 0) + item.get('other_expenses', 0) %}
+                    {% set profit = item.target_price - total_expenses %}
+                    <tr class="hover:bg-dark-bg">
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <div class="text-sm font-medium text-white">{{ item.item_name[:40] }}</div>
+                            <div class="text-sm text-dark-muted">{{ item.category }}</div>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
+                                {% if item.status == 'Sold' %}bg-green-900 text-green-300
+                                {% elif item.status == 'Listed' %}bg-blue-900 text-blue-300
+                                {% else %}bg-yellow-900 text-yellow-300{% endif %}">
+                                {{ item.status }}
+                            </span>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-dark-text">${{ "%.2f"|format(item.purchase_price) }}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-dark-text">${{ "%.2f"|format(item.target_price) }}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm {% if profit >= 0 %}text-green-400{% else %}text-red-400{% endif %}">
+                            ${{ "%.2f"|format(profit) }}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm">
+                            <a href="/item/{{ item.id }}" class="text-blue-400 hover:text-blue-300">View</a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        <div class="px-6 py-4 border-t border-dark-border">
+            <a href="/items" class="text-blue-400 hover:text-blue-300 text-sm font-medium">View all items →</a>
+        </div>
+    </div>
+</div>
+{% endblock %}

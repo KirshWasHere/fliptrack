@@ -150,12 +150,8 @@ def validate_item_name(name: str) -> tuple[bool, str]:
 
 def get_status_emoji(status: str) -> str:
     """Get emoji for status"""
-    emojis = {
-        'Draft': '📝',
-        'Listed': '🏷️',
-        'Sold': '✅'
-    }
-    return emojis.get(status, '📦')
+    # Emojis removed for cleaner output
+    return ''
 
 def truncate_text(text: str, max_length: int = 50) -> str:
     """Truncate text with ellipsis"""

@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}FlipTrack{% endblock %}</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        dark: {
+                            bg: '#0a0a0a',
+                            surface: '#1a1a1a',
+                            border: '#2a2a2a',
+                            text: '#e0e0e0',
+                            muted: '#808080'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { background: #0a0a0a; color: #e0e0e0; }
+    </style>
+</head>
+<body class="dark min-h-screen">
+    <!-- Navigation -->
+    <nav class="bg-dark-surface border-b border-dark-border">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16">
+                <div class="flex">
+                    <div class="flex-shrink-0 flex items-center">
+                        <a href="/" class="text-2xl font-bold text-white">FlipTrack</a>
+                    </div>
+                    <div class="hidden sm:ml-6 sm:flex sm:space-x-8">
+                        <a href="/" class="{% if request.path == '/' %}border-blue-500 text-white{% else %}border-transparent text-dark-text hover:text-white{% endif %} inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">
+                            Dashboard
+                        </a>
+                        <a href="/items" class="{% if '/items' in request.path or '/item/' in request.path %}border-blue-500 text-white{% else %}border-transparent text-dark-text hover:text-white{% endif %} inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">
+                            Items
+                        </a>
+                        <a href="/providers" class="{% if '/provider' in request.path %}border-blue-500 text-white{% else %}border-transparent text-dark-text hover:text-white{% endif %} inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">
+                            Providers
+                        </a>
+                        <a href="/analytics" class="{% if '/analytics' in request.path %}border-blue-500 text-white{% else %}border-transparent text-dark-text hover:text-white{% endif %} inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">
+                            Analytics
+                        </a>
+                    </div>
+                </div>
+                <div class="flex items-center gap-2">
+                    <a href="/item/add" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md text-sm font-medium hidden sm:block">
+                        + Add Item
+                    </a>
+                    <a href="/item/add" class="bg-blue-600 hover:bg-blue-700 text-white p-2 rounded-md text-sm font-medium sm:hidden">
+                        +
+                    </a>
+                    <button id="mobile-menu-btn" class="sm:hidden text-white p-2">
+                        <span class="text-xl">≡</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+        <!-- Mobile menu -->
+        <div id="mobile-menu" class="hidden sm:hidden border-t border-dark-border">
+            <div class="px-2 pt-2 pb-3 space-y-1">
+                <a href="/" class="block px-3 py-2 rounded-md text-base font-medium {% if request.path == '/' %}bg-dark-bg text-white{% else %}text-dark-text hover:bg-dark-bg hover:text-white{% endif %}">
+                    Dashboard
+                </a>
+                <a href="/items" class="block px-3 py-2 rounded-md text-base font-medium {% if '/items' in request.path or '/item/' in request.path %}bg-dark-bg text-white{% else %}text-dark-text hover:bg-dark-bg hover:text-white{% endif %}">
+                    Items
+                </a>
+                <a href="/providers" class="block px-3 py-2 rounded-md text-base font-medium {% if '/provider' in request.path %}bg-dark-bg text-white{% else %}text-dark-text hover:bg-dark-bg hover:text-white{% endif %}">
+                    Providers
+                </a>
+                <a href="/analytics" class="block px-3 py-2 rounded-md text-base font-medium {% if '/analytics' in request.path %}bg-dark-bg text-white{% else %}text-dark-text hover:bg-dark-bg hover:text-white{% endif %}">
+                    Analytics
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {% block content %}{% endblock %}
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-dark-surface border-t border-dark-border mt-12">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+            <p class="text-center text-dark-muted text-sm">
+                FlipTrack Web Dashboard - Access from any device
+            </p>
+        </div>
+    </footer>
+
+    <script>
+        // Mobile menu toggle
+        const mobileMenuBtn = document.getElementById('mobile-menu-btn');
+        const mobileMenu = document.getElementById('mobile-menu');
+        
+        if (mobileMenuBtn) {
+            mobileMenuBtn.addEventListener('click', () => {
+                mobileMenu.classList.toggle('hidden');
+            });
+        }
+    </script>
+</body>
+</html>

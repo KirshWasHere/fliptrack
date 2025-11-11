@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+
+{% block title %}Providers - FlipTrack{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <!-- Header -->
+    <div class="flex justify-between items-center">
+        <h1 class="text-3xl font-bold text-white">Providers</h1>
+        <a href="/provider/add" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md">
+            + Add Provider
+        </a>
+    </div>
+
+    <!-- Providers Grid -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {% for ps in provider_stats %}
+        {% set provider = ps.provider %}
+        {% set stats = ps.stats %}
+        <div class="bg-dark-surface border border-dark-border rounded-lg p-6 hover:border-blue-500 transition-colors">
+            <div class="flex justify-between items-start mb-4">
+                <h3 class="text-xl font-bold text-white">{{ provider.name }}</h3>
+                <a href="/provider/{{ provider.id }}" class="text-blue-400 hover:text-blue-300 text-sm">View →</a>
+            </div>
+            
+            {% if provider.contact_person %}
+            <p class="text-dark-muted text-sm mb-2">Contact: {{ provider.contact_person }}</p>
+            {% endif %}
+            
+            <div class="mt-4 pt-4 border-t border-dark-border space-y-2">
+                <div class="flex justify-between text-sm">
+                    <span class="text-dark-muted">Total Items:</span>
+                    <span class="text-white font-medium">{{ stats.total_items }}</span>
+                </div>
+                <div class="flex justify-between text-sm">
+                    <span class="text-dark-muted">Total Spent:</span>
+                    <span class="text-white font-medium">${{ "%.2f"|format(stats.total_spent) }}</span>
+                </div>
+                <div class="flex justify-between text-sm">
+                    <span class="text-dark-muted">Total Profit:</span>
+                    <span class="{% if stats.total_actual_profit >= 0 %}text-green-400{% else %}text-red-400{% endif %} font-medium">
+                        ${{ "%.2f"|format(stats.total_actual_profit) }}
+                    </span>
+                </div>
+                <div class="flex justify-between text-sm">
+                    <span class="text-dark-muted">Items Sold:</span>
+                    <span class="text-white font-medium">{{ stats.sold_count }}</span>
+                </div>
+            </div>
+            
+            {% if provider.tags %}
+            <div class="mt-4 flex flex-wrap gap-2">
+                {% for tag in provider.tags.split(',') %}
+                <span class="px-2 py-1 bg-dark-bg text-dark-text text-xs rounded">{{ tag.strip() }}</span>
+                {% endfor %}
+            </div>
+            {% endif %}
+        </div>
+        {% endfor %}
+    </div>
+
+    {% if not provider_stats %}
+    <div class="bg-dark-surface border border-dark-border rounded-lg p-12 text-center">
+        <p class="text-dark-muted text-lg mb-4">No providers yet</p>
+        <a href="/provider/add" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-md inline-block">
+            Add Your First Provider
+        </a>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

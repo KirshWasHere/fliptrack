@@ -155,9 +155,9 @@ def generate_random_items(count=20):
             if final_sold_price:
                 actual_profit = f" | Actual: ${final_sold_price - purchase_price - shipping_cost:.2f}"
             
-            print(f"✓ Created: {item_name[:40]:<40} | {status:<7} | Potential: ${potential_profit:.2f}{actual_profit}")
+            print(f"[OK] Created: {item_name[:40]:<40} | {status:<7} | Potential: ${potential_profit:.2f}{actual_profit}")
         except Exception as e:
-            print(f"✗ Failed to create {item_name}: {e}")
+            print(f"[FAIL] Failed to create {item_name}: {e}")
     
     return created_items
 
@@ -218,7 +218,7 @@ if __name__ == "__main__":
     
     created = generate_random_items(count)
     
-    print(f"\n✓ Successfully created {len(created)} items")
+    print(f"\n[OK] Successfully created {len(created)} items")
     
     generate_summary()
     

@@ -1,0 +1,222 @@
+{% extends "base.html" %}
+
+{% block title %}Edit Item - FlipTrack{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto">
+    <h1 class="text-3xl font-bold text-white mb-6">Edit Item #{{ item.id }}</h1>
+
+    <form method="POST" enctype="multipart/form-data" class="space-y-6">
+        <!-- Basic Info -->
+        <div class="bg-dark-surface border border-dark-border rounded-lg p-6">
+            <h2 class="text-xl font-bold text-white mb-4">Basic Information</h2>
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-dark-text mb-2">Item Name *</label>
+                    <input type="text" name="item_name" value="{{ item.item_name }}" required 
+                           class="w-full bg-dark-bg border border-dark-border rounded-md px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-dark-text mb-2">Category</label>
+                        <select name="category" 
+                                class="w-full bg-dark-bg border border-dark-border rounded-md px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <option value="General" {% if item.category == 'General' %}selected{% endif %}>General</option>
+                            <option value="Sneakers" {% if item.category == 'Sneakers' %}selected{% endif %}>Sneakers</option>
+                            <option value="Electronics" {% if item.category == 'Electronics' %}selected{% endif %}>Electronics</option>
+                            <option value="Books" {% if item.category == 'Books' %}selected{% endif %}>Books</option>
+                        </select>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-dark-text mb-2">Condition</label>
+                        <select name="condition" 
+                                class="w-full bg-dark-bg border border-dark-border rounded-md px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <option value="">Select...</option>
+                            <option value="New">New</option>
+                            <option value="Like New">Like New</option>
+                            <option value="Good">Good</option>
+                            <option value="Fair">Fair</option>
+                            <option value="Poor">Poor</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-dark-text mb-2">Provider</label>
+                    <select name="provider_id" 
+                            class="w-full bg-dark-bg border border-dark-border rounded-md px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <option value="">None</option>
+                        {% for provider in providers %}
+                        <option value="{{ provider.id }}">{{ provider.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <!-- Pricing -->
+        <div class="bg-dark-surface border border-dark-border rounded-lg p-6">
+            <h2 class="text-xl font-bold text-white mb-4">Pricing</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-dark-text mb-2">Purchase Price *</label>
+                    <input type="number" name="purchase_price" step="0.01" value="{{ item.purchase_price }}" required 
+                           class="w-full bg-dark-bg border border-dark-border rounded-md px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-dark-text mb-2">Shipping Cost</label>
+                    <input type="number" name="shipping_cost" step="0.01" value="{{ item.shipping_cost }}" 
+                           class="w-full bg-dark-bg border border-dark-border rounded-md px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-dark-text mb-2">Target Selling Price *</label>
+                    <input type="number" name="target_price" step="0.01" value="{{ item.target_price }}" required 
+                           class="w-full bg-dark-bg border border-dark-border rounded-md px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+            </div>
+        </div>
+
+        <!-- Expenses -->
+        <div class="bg-dark-surface border border-dark-border rounded-lg p-6">
+            <h2 class="text-xl font-bold text-white mb-4">Additional Expenses</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-dark-text mb-2">Listing Fee</label>
+                    <input type="number" name="listing_fee" step="0.01" value="0" 
+                           class="w-full bg-dark-bg border border-dark-border rounded-md px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-dark-text mb-2">Processing Fee</label>
+                    <input type="number" name="processing_fee" step="0.01" value="0" 
+                           class="w-full bg-dark-bg border border-dark-border rounded-md px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-dark-text mb-2">Storage Cost</label>
+                    <input type="number" name="storage_cost" step="0.01" value="0" 
+                           class="w-full bg-dark-bg border border-dark-border rounded-md px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-dark-text mb-2">Other Expenses</label>
+                    <input type="number" name="other_expenses" step="0.01" value="0" 
+                           class="w-full bg-dark-bg border border-dark-border rounded-md px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+            </div>
+        </div>
+
+        <!-- Status -->
+        <div class="bg-dark-surface border border-dark-border rounded-lg p-6">
+            <h2 class="text-xl font-bold text-white mb-4">Status</h2>
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-dark-text mb-2">Status</label>
+                    <select name="status" id="status-select" onchange="toggleSoldFields()" 
+                            class="w-full bg-dark-bg border border-dark-border rounded-md px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <option value="Draft" {% if item.status == 'Draft' %}selected{% endif %}>Draft</option>
+                        <option value="Listed" {% if item.status == 'Listed' %}selected{% endif %}>Listed</option>
+                        <option value="Sold" {% if item.status == 'Sold' %}selected{% endif %}>Sold</option>
+                    </select>
+                </div>
+                
+                <div id="sold-fields" class="hidden space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-dark-text mb-2">Final Sold Price</label>
+                        <input type="number" name="final_sold_price" step="0.01" 
+                               class="w-full bg-dark-bg border border-dark-border rounded-md px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-dark-text mb-2">Sales Channel</label>
+                        <select name="sales_channel" 
+                                class="w-full bg-dark-bg border border-dark-border rounded-md px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <option value="">Select...</option>
+                            <option value="eBay">eBay</option>
+                            <option value="StockX">StockX</option>
+                            <option value="Grailed">Grailed</option>
+                            <option value="Local">Local</option>
+                            <option value="Facebook">Facebook</option>
+                            <option value="Mercari">Mercari</option>
+                            <option value="Other">Other</option>
+                        </select>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-dark-text mb-2">Listing URL</label>
+                        <input type="url" name="listing_url" 
+                               class="w-full bg-dark-bg border border-dark-border rounded-md px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Additional Details -->
+        <div class="bg-dark-surface border border-dark-border rounded-lg p-6">
+            <h2 class="text-xl font-bold text-white mb-4">Additional Details</h2>
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-dark-text mb-2">Product URL</label>
+                    <input type="url" name="product_url" 
+                           class="w-full bg-dark-bg border border-dark-border rounded-md px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-dark-text mb-2">Storage Location</label>
+                    <input type="text" name="storage_location" placeholder="e.g., Shelf A, Box 3" 
+                           class="w-full bg-dark-bg border border-dark-border rounded-md px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-dark-text mb-2">Tags (comma-separated)</label>
+                    <input type="text" name="tags" placeholder="e.g., vintage, rare, damaged" 
+                           class="w-full bg-dark-bg border border-dark-border rounded-md px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-dark-text mb-2">Notes</label>
+                    <textarea name="notes" rows="3" 
+                              class="w-full bg-dark-bg border border-dark-border rounded-md px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"></textarea>
+                </div>
+            </div>
+        </div>
+
+        <!-- Images -->
+        <div class="bg-dark-surface border border-dark-border rounded-lg p-6">
+            <h2 class="text-xl font-bold text-white mb-4">Images</h2>
+            <div>
+                <label class="block text-sm font-medium text-dark-text mb-2">Upload Images</label>
+                <input type="file" name="images" multiple accept="image/*" 
+                       class="w-full bg-dark-bg border border-dark-border rounded-md px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <p class="text-dark-muted text-sm mt-2">You can upload multiple images from your device</p>
+            </div>
+        </div>
+
+        <!-- Actions -->
+        <div class="flex gap-4">
+            <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-md font-medium">
+                Update Item
+            </button>
+            <a href="/item/{{ item.id }}" class="bg-dark-surface hover:bg-dark-border text-white px-6 py-3 rounded-md font-medium border border-dark-border">
+                Cancel
+            </a>
+        </div>
+    </form>
+</div>
+
+<script>
+function toggleSoldFields() {
+    const status = document.getElementById('status-select').value;
+    const soldFields = document.getElementById('sold-fields');
+    if (status === 'Sold') {
+        soldFields.classList.remove('hidden');
+    } else {
+        soldFields.classList.add('hidden');
+    }
+}
+</script>
+{% endblock %}

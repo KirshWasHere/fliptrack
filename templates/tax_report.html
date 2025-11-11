@@ -1,0 +1,103 @@
+{% extends "base.html" %}
+
+{% block title %}Tax Report - FlipTrack{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <div class="flex justify-between items-center">
+        <h1 class="text-3xl font-bold text-white">Tax Report</h1>
+        <button onclick="window.print()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md">
+            Print Report
+        </button>
+    </div>
+
+    <!-- Summary -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div class="bg-dark-surface border border-dark-border rounded-lg p-6">
+            <div class="text-dark-muted text-sm">Total Revenue</div>
+            <div class="text-3xl font-bold text-green-400 mt-2">${{ "%.2f"|format(total_revenue) }}</div>
+            <div class="text-dark-muted text-sm mt-1">From {{ items|length }} sales</div>
+        </div>
+        
+        <div class="bg-dark-surface border border-dark-border rounded-lg p-6">
+            <div class="text-dark-muted text-sm">Total Expenses</div>
+            <div class="text-3xl font-bold text-red-400 mt-2">${{ "%.2f"|format(total_expenses) }}</div>
+            <div class="text-dark-muted text-sm mt-1">All costs included</div>
+        </div>
+        
+        <div class="bg-dark-surface border border-dark-border rounded-lg p-6">
+            <div class="text-dark-muted text-sm">Net Profit</div>
+            <div class="text-3xl font-bold {% if net_profit >= 0 %}text-green-400{% else %}text-red-400{% endif %} mt-2">
+                ${{ "%.2f"|format(net_profit) }}
+            </div>
+            <div class="text-dark-muted text-sm mt-1">Taxable income</div>
+        </div>
+    </div>
+
+    <!-- Detailed Breakdown -->
+    <div class="bg-dark-surface border border-dark-border rounded-lg p-6">
+        <h2 class="text-xl font-bold text-white mb-4">Sales Breakdown</h2>
+        <div class="overflow-x-auto">
+            <table class="min-w-full">
+                <thead class="border-b border-dark-border">
+                    <tr>
+                        <th class="text-left py-3 text-dark-muted text-sm">Date</th>
+                        <th class="text-left py-3 text-dark-muted text-sm">Item</th>
+                        <th class="text-right py-3 text-dark-muted text-sm">Revenue</th>
+                        <th class="text-right py-3 text-dark-muted text-sm">Cost</th>
+                        <th class="text-right py-3 text-dark-muted text-sm">Expenses</th>
+                        <th class="text-right py-3 text-dark-muted text-sm">Profit</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-dark-border">
+                    {% for item in items %}
+                    {% set cost = item.purchase_price + item.shipping_cost %}
+                    {% set expenses = item.get('listing_fee', 0) + item.get('processing_fee', 0) + item.get('storage_cost', 0) + item.get('other_expenses', 0) %}
+                    {% set profit = item.final_sold_price - cost - expenses %}
+                    <tr>
+                        <td class="py-3 text-dark-text text-sm">
+                            {{ item.get('date_sold', 'N/A')[:10] if item.get('date_sold') else 'N/A' }}
+                        </td>
+                        <td class="py-3 text-white text-sm">{{ item.item_name[:40] }}</td>
+                        <td class="py-3 text-right text-green-400 text-sm">${{ "%.2f"|format(item.final_sold_price) }}</td>
+                        <td class="py-3 text-right text-dark-text text-sm">${{ "%.2f"|format(cost) }}</td>
+                        <td class="py-3 text-right text-dark-text text-sm">${{ "%.2f"|format(expenses) }}</td>
+                        <td class="py-3 text-right {% if profit >= 0 %}text-green-400{% else %}text-red-400{% endif %} text-sm font-medium">
+                            ${{ "%.2f"|format(profit) }}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+                <tfoot class="border-t-2 border-dark-border">
+                    <tr>
+                        <td colspan="2" class="py-3 text-white font-bold">TOTALS</td>
+                        <td class="py-3 text-right text-green-400 font-bold">${{ "%.2f"|format(total_revenue) }}</td>
+                        <td colspan="2" class="py-3 text-right text-red-400 font-bold">${{ "%.2f"|format(total_expenses) }}</td>
+                        <td class="py-3 text-right {% if net_profit >= 0 %}text-green-400{% else %}text-red-400{% endif %} font-bold">
+                            ${{ "%.2f"|format(net_profit) }}
+                        </td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+    </div>
+
+    <!-- Tax Notes -->
+    <div class="bg-yellow-900 border border-yellow-700 rounded-lg p-6">
+        <h3 class="text-yellow-300 font-bold mb-2">Important: Tax Information</h3>
+        <p class="text-yellow-200 text-sm">
+            This report is for informational purposes only. Please consult with a tax professional for accurate tax filing. 
+            Keep all receipts and documentation for your records. Report all income to the IRS.
+        </p>
+    </div>
+</div>
+
+<style>
+@media print {
+    nav, footer, button { display: none !important; }
+    body { background: white !important; color: black !important; }
+    .bg-dark-surface { background: white !important; }
+    .text-white, .text-dark-text { color: black !important; }
+}
+</style>
+{% endblock %}

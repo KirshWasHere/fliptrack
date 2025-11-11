@@ -1,0 +1,157 @@
+{% extends "base.html" %}
+
+{% block title %}Analytics - FlipTrack{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <h1 class="text-3xl font-bold text-white">Analytics</h1>
+
+    <!-- Overview Stats -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div class="bg-dark-surface border border-dark-border rounded-lg p-6">
+            <div class="text-dark-muted text-sm">Total Items</div>
+            <div class="text-3xl font-bold text-white mt-2">{{ stats.total_items }}</div>
+            <div class="mt-2 text-sm">
+                <span class="text-green-400">{{ stats.sold_count }} sold</span>
+                <span class="text-dark-muted"> • </span>
+                <span class="text-blue-400">{{ stats.listed_count }} listed</span>
+            </div>
+        </div>
+        
+        <div class="bg-dark-surface border border-dark-border rounded-lg p-6">
+            <div class="text-dark-muted text-sm">Total Revenue</div>
+            <div class="text-3xl font-bold text-green-400 mt-2">${{ "%.2f"|format(stats.total_revenue) }}</div>
+            <div class="mt-2 text-sm text-dark-muted">From {{ stats.sold_count }} sales</div>
+        </div>
+        
+        <div class="bg-dark-surface border border-dark-border rounded-lg p-6">
+            <div class="text-dark-muted text-sm">Total Profit</div>
+            <div class="text-3xl font-bold text-green-400 mt-2">${{ "%.2f"|format(stats.total_actual_profit) }}</div>
+            <div class="mt-2 text-sm text-dark-muted">After all expenses</div>
+        </div>
+        
+        <div class="bg-dark-surface border border-dark-border rounded-lg p-6">
+            <div class="text-dark-muted text-sm">ROI</div>
+            <div class="text-3xl font-bold text-yellow-400 mt-2">{{ "%.1f"|format(stats.roi) }}%</div>
+            <div class="mt-2 text-sm text-dark-muted">Return on investment</div>
+        </div>
+    </div>
+
+    <!-- Sales Channels -->
+    {% if channels %}
+    <div class="bg-dark-surface border border-dark-border rounded-lg p-6">
+        <h2 class="text-xl font-bold text-white mb-4">Sales by Channel</h2>
+        <div class="overflow-x-auto">
+            <table class="min-w-full">
+                <thead>
+                    <tr class="border-b border-dark-border">
+                        <th class="text-left py-3 text-dark-muted text-sm font-medium">Channel</th>
+                        <th class="text-right py-3 text-dark-muted text-sm font-medium">Items Sold</th>
+                        <th class="text-right py-3 text-dark-muted text-sm font-medium">Revenue</th>
+                        <th class="text-right py-3 text-dark-muted text-sm font-medium">Profit</th>
+                        <th class="text-right py-3 text-dark-muted text-sm font-medium">Avg Profit</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-dark-border">
+                    {% for channel, data in channels.items() %}
+                    <tr>
+                        <td class="py-3 text-white font-medium">{{ channel }}</td>
+                        <td class="py-3 text-right text-dark-text">{{ data.count }}</td>
+                        <td class="py-3 text-right text-green-400">${{ "%.2f"|format(data.revenue) }}</td>
+                        <td class="py-3 text-right {% if data.profit >= 0 %}text-green-400{% else %}text-red-400{% endif %}">
+                            ${{ "%.2f"|format(data.profit) }}
+                        </td>
+                        <td class="py-3 text-right text-dark-text">${{ "%.2f"|format(data.profit / data.count) }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Inventory Status -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div class="bg-dark-surface border border-dark-border rounded-lg p-6">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="text-lg font-bold text-white">Draft Items</h3>
+                <span class="text-2xl font-bold text-yellow-400">{{ stats.draft_count }}</span>
+            </div>
+            <div class="text-dark-muted text-sm">Items not yet listed</div>
+        </div>
+        
+        <div class="bg-dark-surface border border-dark-border rounded-lg p-6">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="text-lg font-bold text-white">Listed Items</h3>
+                <span class="text-2xl font-bold text-blue-400">{{ stats.listed_count }}</span>
+            </div>
+            <div class="text-dark-muted text-sm">Currently for sale</div>
+        </div>
+        
+        <div class="bg-dark-surface border border-dark-border rounded-lg p-6">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="text-lg font-bold text-white">Sold Items</h3>
+                <span class="text-2xl font-bold text-green-400">{{ stats.sold_count }}</span>
+            </div>
+            <div class="text-dark-muted text-sm">Successfully sold</div>
+        </div>
+    </div>
+
+    <!-- Financial Summary -->
+    <div class="bg-dark-surface border border-dark-border rounded-lg p-6">
+        <h2 class="text-xl font-bold text-white mb-4">Financial Summary</h2>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div class="space-y-3">
+                <div class="flex justify-between">
+                    <span class="text-dark-muted">Total Invested:</span>
+                    <span class="text-white font-medium">${{ "%.2f"|format(stats.total_invested) }}</span>
+                </div>
+                <div class="flex justify-between">
+                    <span class="text-dark-muted">Inventory Value:</span>
+                    <span class="text-white font-medium">${{ "%.2f"|format(stats.inventory_value) }}</span>
+                </div>
+                <div class="flex justify-between">
+                    <span class="text-dark-muted">Potential Profit:</span>
+                    <span class="text-blue-400 font-medium">${{ "%.2f"|format(stats.total_potential_profit) }}</span>
+                </div>
+            </div>
+            <div class="space-y-3">
+                <div class="flex justify-between">
+                    <span class="text-dark-muted">Total Revenue:</span>
+                    <span class="text-white font-medium">${{ "%.2f"|format(stats.total_revenue) }}</span>
+                </div>
+                <div class="flex justify-between">
+                    <span class="text-dark-muted">Actual Profit:</span>
+                    <span class="text-green-400 font-medium">${{ "%.2f"|format(stats.total_actual_profit) }}</span>
+                </div>
+                <div class="flex justify-between">
+                    <span class="text-dark-muted">Average Profit per Sale:</span>
+                    <span class="text-white font-medium">
+                        {% if stats.sold_count > 0 %}
+                        ${{ "%.2f"|format(stats.total_actual_profit / stats.sold_count) }}
+                        {% else %}
+                        $0.00
+                        {% endif %}
+                    </span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="bg-dark-surface border border-dark-border rounded-lg p-6">
+        <h2 class="text-xl font-bold text-white mb-4">Export & Reports</h2>
+        <div class="flex flex-wrap gap-4">
+            <a href="/export/csv" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md">
+                Export to CSV
+            </a>
+            <a href="/export/tax-report" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-md">
+                Tax Report
+            </a>
+            <a href="/reports/master" class="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-md">
+                Master Index
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock %}
