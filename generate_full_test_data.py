@@ -235,6 +235,25 @@ def generate_items(count=30, provider_ids=None):
             sales_channel = random.choice(["eBay", "StockX", "Grailed", "Local", "Facebook", "Mercari"])
             listing_url = random.choice(SAMPLE_URLS) if random.random() > 0.3 else ""
         
+        # Tags, notes, condition, storage
+        tags_list = ["vintage", "rare", "limited", "new", "used", "damaged", "mint", "collectible"]
+        tags = ", ".join(random.sample(tags_list, random.randint(0, 3))) if random.random() > 0.5 else ""
+        
+        notes_list = [
+            "Great condition",
+            "Minor wear",
+            "Box included",
+            "No box",
+            "Fast seller",
+            "Good deal",
+            "Needs cleaning",
+            "Authentic verified"
+        ]
+        notes = random.choice(notes_list) if random.random() > 0.6 else ""
+        
+        condition = random.choice(["New", "Like New", "Good", "Fair", ""]) if random.random() > 0.3 else ""
+        storage_location = random.choice(["Shelf A", "Box 1", "Closet", "Storage Unit", ""]) if random.random() > 0.5 else ""
+        
         item_data = {
             'item_name': item_name,
             'category': category,
@@ -252,7 +271,11 @@ def generate_items(count=30, provider_ids=None):
             'storage_cost': storage_cost,
             'other_expenses': other_expenses,
             'sales_channel': sales_channel,
-            'listing_url': listing_url
+            'listing_url': listing_url,
+            'tags': tags,
+            'notes': notes,
+            'condition': condition,
+            'storage_location': storage_location
         }
         
         try:
@@ -267,7 +290,27 @@ def generate_items(count=30, provider_ids=None):
         except Exception as e:
             print(f"✗ Failed to create {item_name}: {e}")
     
-    print(f"\n✓ Created {len(created_items)} items\n")
+    print(f"\n✓ Created {len(created_items)} items")
+    
+    # Generate reports for all items
+    print("\n" + "=" * 80)
+    print("GENERATING REPORTS")
+    print("=" * 80)
+    
+    from report_generator import ReportGenerator
+    generator = ReportGenerator()
+    
+    for item_id in created_items:
+        try:
+            item = db.get_item(item_id)
+            if item:
+                report_path = generator.generate_report(item)
+                db.update_report_path(item_id, report_path)
+                print(f"✓ Generated report for: {item['item_name'][:50]}")
+        except Exception as e:
+            print(f"✗ Failed to generate report for item {item_id}: {e}")
+    
+    print(f"\n✓ Generated reports for {len(created_items)} items\n")
     return created_items
 
 

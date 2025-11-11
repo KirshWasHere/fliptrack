@@ -50,24 +50,27 @@ class ConfirmDialog(ModalScreen[bool]):
 
 class DashboardScreen(Screen):
     BINDINGS = [
-        Binding("a", "add_item", "Add Item"),
-        Binding("e", "edit_item", "Edit Item"),
-        Binding("d", "delete_item", "Delete Item"),
+        Binding("a", "add_item", "Add"),
+        Binding("e", "edit_item", "Edit"),
+        Binding("d", "delete_item", "Delete"),
         Binding("p", "providers", "Providers"),
-        Binding("r", "generate_report", "Generate Report"),
-        Binding("o", "open_report", "Open Report"),
-        Binding("m", "master_index", "Master Index"),
-        Binding("ctrl+r", "generate_all_reports", "Generate All Reports"),
-        Binding("ctrl+d", "delete_all", "Delete All Items"),
+        Binding("t", "analytics", "Analytics"),
+        Binding("v", "view_report", "View Report"),
         Binding("ctrl+f", "focus_search", "Search"),
-        Binding("ctrl+e", "export_csv", "Export CSV"),
-        Binding("ctrl+b", "backup", "Backup"),
         Binding("q", "quit", "Quit"),
     ]
     
     def compose(self) -> ComposeResult:
         yield Header()
         yield Container(
+            Horizontal(
+                Button("📊 Analytics", id="analytics-btn", variant="primary"),
+                Button("💾 Export CSV", id="export-btn"),
+                Button("🔄 Backup", id="backup-btn"),
+                Button("📑 Master Index", id="master-btn"),
+                Button("🗑️ Delete All", id="delete-all-btn", variant="error"),
+                id="action-bar"
+            ),
             Static(id="stats-panel"),
             Horizontal(
                 Input(placeholder="Search items...", id="search-input"),
@@ -96,6 +99,19 @@ class DashboardScreen(Screen):
     
     def action_focus_search(self):
         self.query_one("#search-input", Input).focus()
+    
+    def on_button_pressed(self, event: Button.Pressed):
+        """Handle button clicks in action bar"""
+        if event.button.id == "analytics-btn":
+            self.action_analytics()
+        elif event.button.id == "export-btn":
+            self.action_export_csv()
+        elif event.button.id == "backup-btn":
+            self.action_backup()
+        elif event.button.id == "master-btn":
+            self.action_master_index()
+        elif event.button.id == "delete-all-btn":
+            self.action_delete_all()
     
     def refresh_dashboard(self):
         try:
@@ -189,7 +205,8 @@ ROI: {stats['roi']:.1f}%"""
                     handle_confirm
                 )
     
-    def action_generate_report(self):
+    def action_view_report(self):
+        """View the HTML report for the selected item"""
         table = self.query_one("#items-table", DataTable)
         if table.row_count > 0:
             row_key = table.cursor_row
@@ -199,52 +216,48 @@ ROI: {stats['roi']:.1f}%"""
                     db = Database()
                     item = db.get_item(item_id)
                     
-                    if item:
+                    if not item:
+                        self.app.notify("Item not found", severity="error")
+                        return
+                    
+                    # Generate report if it doesn't exist or is outdated
+                    report_path = item.get('report_path')
+                    if not report_path or not os.path.exists(report_path):
                         generator = ReportGenerator()
                         report_path = generator.generate_report(item)
                         db.update_report_path(item_id, report_path)
-                        self.app.notify(f"Report generated! Press 'o' to open it.")
-                        self.refresh_dashboard()
-                    else:
-                        self.app.notify("Item not found", severity="error")
+                    
+                    # Open report
+                    if os.name == 'nt':  # Windows
+                        os.startfile(report_path)
+                    elif os.name == 'posix':  # macOS/Linux
+                        import subprocess
+                        if os.uname().sysname == 'Darwin':  # macOS
+                            subprocess.run(['open', report_path])
+                        else:  # Linux
+                            subprocess.run(['xdg-open', report_path])
+                    self.app.notify(f"Opening report...")
                 except Exception as e:
-                    self.app.notify(f"Error generating report: {str(e)}", severity="error")
-    
-    def action_open_report(self):
-        """Open the HTML report for the selected item"""
-        table = self.query_one("#items-table", DataTable)
-        if table.row_count > 0:
-            row_key = table.cursor_row
-            if row_key is not None:
-                item_id = int(table.get_row_at(row_key)[0])
-                db = Database()
-                item = db.get_item(item_id)
-                
-                if item and item.get('report_path'):
-                    report_path = item['report_path']
-                    if os.path.exists(report_path):
-                        try:
-                            if os.name == 'nt':  # Windows
-                                os.startfile(report_path)
-                            elif os.name == 'posix':  # macOS/Linux
-                                import subprocess
-                                if os.uname().sysname == 'Darwin':  # macOS
-                                    subprocess.run(['open', report_path])
-                                else:  # Linux
-                                    subprocess.run(['xdg-open', report_path])
-                            self.app.notify(f"Opening report in browser...")
-                        except Exception as e:
-                            self.app.notify(f"Error opening report: {e}", severity="error")
-                    else:
-                        self.app.notify("Report file not found. Generate it first (press 'r')", severity="warning")
-                else:
-                    self.app.notify("No report generated yet. Press 'r' to generate.", severity="warning")
+                    self.app.notify(f"Error: {str(e)}", severity="error")
     
     def action_master_index(self):
         try:
             db = Database()
             items = db.get_all_items()
             generator = ReportGenerator()
+            
+            # Generate missing reports first
+            self.app.notify(f"Generating reports for {len(items)} items...")
+            for item in items:
+                if not item.get('report_path') or not os.path.exists(item.get('report_path', '')):
+                    try:
+                        report_path = generator.generate_report(item)
+                        db.update_report_path(item['id'], report_path)
+                    except Exception as e:
+                        print(f"Failed to generate report for item {item['id']}: {e}")
+            
+            # Generate master index
+            items = db.get_all_items()  # Refresh to get updated report paths
             index_path = generator.generate_master_index(items)
             
             # Automatically open the index
@@ -424,6 +437,10 @@ ROI: {stats['roi']:.1f}%"""
             self.refresh_dashboard()
         self.app.push_screen(ProvidersScreen(), check_refresh)
     
+    def action_analytics(self):
+        """Open analytics screen"""
+        self.app.push_screen(AnalyticsScreen())
+    
     def action_quit(self):
         self.app.exit()
 
@@ -461,6 +478,20 @@ class ItemFormScreen(Screen):
                 id="provider",
                 allow_blank=True
             ),
+            Label("[bold]Additional Info:[/]"),
+            Label("Tags (comma-separated):"),
+            Input(id="tags", placeholder="e.g., vintage, rare, damaged"),
+            Label("Condition:"),
+            Select(
+                [("", ""), ("New", "New"), ("Like New", "Like New"), ("Good", "Good"), 
+                 ("Fair", "Fair"), ("Poor", "Poor")],
+                id="condition",
+                allow_blank=True
+            ),
+            Label("Storage Location:"),
+            Input(id="storage_location", placeholder="e.g., Shelf A, Box 3"),
+            Label("Notes:"),
+            Input(id="notes", placeholder="Additional notes"),
             Horizontal(
                 Button("Scrape Images", id="scrape-btn", variant="primary"),
                 Button("Preview", id="preview-btn", variant="default", disabled=True),
@@ -562,6 +593,13 @@ class ItemFormScreen(Screen):
                 self.query_one("#sales_channel", Select).value = item['sales_channel']
             if item.get('listing_url'):
                 self.query_one("#listing_url", Input).value = item['listing_url']
+            
+            # Set notes/tags
+            self.query_one("#tags", Input).value = item.get('tags', '')
+            self.query_one("#notes", Input).value = item.get('notes', '')
+            self.query_one("#storage_location", Input).value = item.get('storage_location', '')
+            if item.get('condition'):
+                self.query_one("#condition", Select).value = item['condition']
             
             # Set status
             status = item.get('status', 'Draft')
@@ -862,6 +900,12 @@ class ItemFormScreen(Screen):
                 sales_channel = self.query_one("#sales_channel", Select).value or ""
                 listing_url = self.query_one("#listing_url", Input).value.strip()
             
+            # Get notes/tags
+            tags = self.query_one("#tags", Input).value.strip()
+            notes = self.query_one("#notes", Input).value.strip()
+            condition = self.query_one("#condition", Select).value or ""
+            storage_location = self.query_one("#storage_location", Input).value.strip()
+            
             # Download and save images
             selected_images = []
             images_dir = Path("./data/images")
@@ -910,7 +954,11 @@ class ItemFormScreen(Screen):
                 'storage_cost': storage_cost,
                 'other_expenses': other_expenses,
                 'sales_channel': sales_channel,
-                'listing_url': listing_url
+                'listing_url': listing_url,
+                'tags': tags,
+                'notes': notes,
+                'condition': condition,
+                'storage_location': storage_location
             }
             
             try:
@@ -931,10 +979,29 @@ class ItemFormScreen(Screen):
                             ]
                             db.update_item(item_id, item_data)
                     
-                    self.app.notify(f"Item added successfully! ID: {item_id}")
+                    # Auto-generate report
+                    try:
+                        item = db.get_item(item_id)
+                        generator = ReportGenerator()
+                        report_path = generator.generate_report(item)
+                        db.update_report_path(item_id, report_path)
+                    except Exception as e:
+                        print(f"Failed to generate report: {e}")
+                    
+                    self.app.notify(f"Item added! Press 'v' to view report.")
                 else:
                     db.update_item(self.item_id, item_data)
-                    self.app.notify(f"Item {self.item_id} updated successfully!")
+                    
+                    # Auto-regenerate report
+                    try:
+                        item = db.get_item(self.item_id)
+                        generator = ReportGenerator()
+                        report_path = generator.generate_report(item)
+                        db.update_report_path(self.item_id, report_path)
+                    except Exception as e:
+                        print(f"Failed to generate report: {e}")
+                    
+                    self.app.notify(f"Item updated! Press 'v' to view report.")
                 
                 self.dismiss(True)
             except Exception as db_error:
@@ -1273,6 +1340,126 @@ Actual Profit: ${stats['total_actual_profit']:.2f}"""
         self.dismiss()
 
 
+class AnalyticsScreen(Screen):
+    BINDINGS = [
+        Binding("escape", "back", "Back"),
+    ]
+    
+    def compose(self) -> ComposeResult:
+        yield Header()
+        yield ScrollableContainer(
+            Static(id="analytics-summary"),
+            Static(id="tax-report"),
+            Static(id="channel-breakdown"),
+            Static(id="provider-breakdown"),
+            id="analytics-container"
+        )
+        yield Footer()
+    
+    def on_mount(self):
+        self.refresh_analytics()
+    
+    def refresh_analytics(self):
+        try:
+            db = Database()
+            items = db.get_all_items()
+            stats = db.get_summary_stats()
+            
+            # Summary
+            summary_text = f"""Total Items: {stats['total_items']}
+Inventory Value: ${stats['inventory_value']:.2f}
+Total Invested: ${stats['total_invested']:.2f}
+Total Revenue: ${stats['total_revenue']:.2f}
+Total Profit: ${stats['total_actual_profit']:.2f}
+ROI: {stats['roi']:.1f}%"""
+            
+            self.query_one("#analytics-summary", Static).update(
+                Panel(summary_text, title="📊 Summary", border_style="cyan")
+            )
+            
+            # Tax Report
+            from datetime import datetime
+            current_year = datetime.now().year
+            
+            # Calculate quarterly
+            quarters = {1: [], 2: [], 3: [], 4: []}
+            for item in items:
+                if item['status'] == 'Sold' and item.get('date_sold'):
+                    try:
+                        date_sold = datetime.fromisoformat(item['date_sold'])
+                        if date_sold.year == current_year:
+                            quarter = (date_sold.month - 1) // 3 + 1
+                            total_expenses = (
+                                item['purchase_price'] + item['shipping_cost'] +
+                                item.get('listing_fee', 0) + item.get('processing_fee', 0) +
+                                item.get('storage_cost', 0) + item.get('other_expenses', 0)
+                            )
+                            profit = item['final_sold_price'] - total_expenses
+                            quarters[quarter].append(profit)
+                    except:
+                        pass
+            
+            tax_text = f"Year: {current_year}\n\n"
+            for q in range(1, 5):
+                q_profit = sum(quarters[q])
+                tax_text += f"Q{q}: ${q_profit:.2f} ({len(quarters[q])} items)\n"
+            tax_text += f"\nAnnual Profit: ${stats['total_actual_profit']:.2f}"
+            
+            self.query_one("#tax-report", Static).update(
+                Panel(tax_text, title="💰 Tax Report", border_style="green")
+            )
+            
+            # Sales Channel Breakdown
+            channels = {}
+            for item in items:
+                if item['status'] == 'Sold' and item.get('sales_channel'):
+                    channel = item['sales_channel']
+                    if channel not in channels:
+                        channels[channel] = {'count': 0, 'revenue': 0, 'profit': 0}
+                    
+                    channels[channel]['count'] += 1
+                    channels[channel]['revenue'] += item['final_sold_price']
+                    
+                    total_expenses = (
+                        item['purchase_price'] + item['shipping_cost'] +
+                        item.get('listing_fee', 0) + item.get('processing_fee', 0) +
+                        item.get('storage_cost', 0) + item.get('other_expenses', 0)
+                    )
+                    channels[channel]['profit'] += item['final_sold_price'] - total_expenses
+            
+            channel_text = ""
+            for channel, data in sorted(channels.items(), key=lambda x: x[1]['profit'], reverse=True):
+                channel_text += f"{channel}: {data['count']} items | ${data['revenue']:.2f} revenue | ${data['profit']:.2f} profit\n"
+            
+            if not channel_text:
+                channel_text = "No sales data yet"
+            
+            self.query_one("#channel-breakdown", Static).update(
+                Panel(channel_text, title="📱 Sales Channels", border_style="blue")
+            )
+            
+            # Provider Breakdown
+            providers = db.get_all_providers()
+            provider_text = ""
+            
+            for provider in providers[:10]:  # Top 10
+                provider_stats = db.get_provider_stats(provider['id'])
+                provider_text += f"{provider['name']}: {provider_stats['total_items']} items | ${provider_stats['total_actual_profit']:.2f} profit\n"
+            
+            if not provider_text:
+                provider_text = "No providers yet"
+            
+            self.query_one("#provider-breakdown", Static).update(
+                Panel(provider_text, title="🏪 Top Providers", border_style="magenta")
+            )
+            
+        except Exception as e:
+            self.app.notify(f"Error loading analytics: {str(e)}", severity="error")
+    
+    def action_back(self):
+        self.dismiss()
+
+
 class ResellingTrackerApp(App):
     CSS = """
     Screen {
@@ -1282,6 +1469,18 @@ class ResellingTrackerApp(App):
     #dashboard-container {
         height: 100%;
         padding: 1;
+    }
+    
+    #action-bar {
+        height: auto;
+        padding: 1;
+        background: $surface;
+        border-bottom: solid $primary;
+    }
+    
+    #action-bar Button {
+        margin: 0 1;
+        min-width: 12;
     }
     
     #stats-panel {
@@ -1420,6 +1619,17 @@ class ResellingTrackerApp(App):
     #provider-items-table {
         height: 1fr;
         border: solid $primary;
+    }
+    
+    /* Analytics Screen */
+    #analytics-container {
+        width: 100%;
+        height: 100%;
+        padding: 2;
+    }
+    
+    #analytics-summary, #tax-report, #channel-breakdown, #provider-breakdown {
+        margin-bottom: 2;
     }
     """
     

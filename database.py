@@ -46,7 +46,11 @@ class Database:
                     listing_url TEXT,
                     date_added TEXT,
                     date_listed TEXT,
-                    date_sold TEXT
+                    date_sold TEXT,
+                    notes TEXT,
+                    tags TEXT,
+                    condition TEXT,
+                    storage_location TEXT
                 )
             """)
             
@@ -77,8 +81,9 @@ class Database:
                         product_url, status, final_sold_price, category,
                         image_urls_cache, selected_images, provider_id,
                         listing_fee, processing_fee, storage_cost, other_expenses,
-                        sales_channel, listing_url, date_added, date_listed, date_sold
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        sales_channel, listing_url, date_added, date_listed, date_sold,
+                        notes, tags, condition, storage_location
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """, (
                     item_data['item_name'],
                     item_data['purchase_price'],
@@ -99,7 +104,11 @@ class Database:
                     item_data.get('listing_url', ''),
                     date_added,
                     date_listed,
-                    date_sold
+                    date_sold,
+                    item_data.get('notes', ''),
+                    item_data.get('tags', ''),
+                    item_data.get('condition', ''),
+                    item_data.get('storage_location', '')
                 ))
                 return cursor.lastrowid
         except Exception as e:
@@ -140,7 +149,11 @@ class Database:
                         sales_channel = ?,
                         listing_url = ?,
                         date_listed = ?,
-                        date_sold = ?
+                        date_sold = ?,
+                        notes = ?,
+                        tags = ?,
+                        condition = ?,
+                        storage_location = ?
                     WHERE id = ?
                 """, (
                     item_data['item_name'],
@@ -162,6 +175,10 @@ class Database:
                     item_data.get('listing_url', ''),
                     date_listed,
                     date_sold,
+                    item_data.get('notes', ''),
+                    item_data.get('tags', ''),
+                    item_data.get('condition', ''),
+                    item_data.get('storage_location', ''),
                     item_id
                 ))
         except Exception as e:
@@ -184,24 +201,54 @@ class Database:
         except Exception as e:
             raise Exception(f"Failed to get item: {str(e)}")
     
-    def get_all_items(self, search_query: str = None, status_filter: str = None) -> List[Dict]:
+    def get_all_items(self, search_query: str = None, status_filter: str = None, 
+                      min_price: float = None, max_price: float = None,
+                      min_profit: float = None, max_profit: float = None) -> List[Dict]:
         try:
             with self.get_connection() as conn:
                 query = "SELECT * FROM items WHERE 1=1"
                 params = []
                 
                 if search_query:
-                    query += " AND item_name LIKE ?"
-                    params.append(f"%{search_query}%")
+                    query += " AND (item_name LIKE ? OR tags LIKE ? OR notes LIKE ?)"
+                    params.extend([f"%{search_query}%", f"%{search_query}%", f"%{search_query}%"])
                 
                 if status_filter and status_filter != "All":
                     query += " AND status = ?"
                     params.append(status_filter)
                 
+                if min_price is not None:
+                    query += " AND purchase_price >= ?"
+                    params.append(min_price)
+                
+                if max_price is not None:
+                    query += " AND purchase_price <= ?"
+                    params.append(max_price)
+                
                 query += " ORDER BY id DESC"
                 
                 rows = conn.execute(query, params).fetchall()
-                return [self._row_to_dict(row) for row in rows]
+                items = [self._row_to_dict(row) for row in rows]
+                
+                # Filter by profit if specified (can't do in SQL easily)
+                if min_profit is not None or max_profit is not None:
+                    filtered_items = []
+                    for item in items:
+                        total_expenses = (
+                            item['purchase_price'] + item['shipping_cost'] +
+                            item.get('listing_fee', 0) + item.get('processing_fee', 0) +
+                            item.get('storage_cost', 0) + item.get('other_expenses', 0)
+                        )
+                        profit = item['target_price'] - total_expenses
+                        
+                        if min_profit is not None and profit < min_profit:
+                            continue
+                        if max_profit is not None and profit > max_profit:
+                            continue
+                        filtered_items.append(item)
+                    return filtered_items
+                
+                return items
         except Exception as e:
             raise Exception(f"Failed to get items: {str(e)}")
     

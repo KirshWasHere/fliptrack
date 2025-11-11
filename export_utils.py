@@ -32,10 +32,13 @@ def export_to_csv(output_path: str = None) -> str:
     
     # Define CSV columns
     fieldnames = [
-        'ID', 'Item Name', 'Category', 'Status',
-        'Purchase Price', 'Shipping Cost', 'Target Price', 'Final Sold Price',
+        'ID', 'Item Name', 'Category', 'Status', 'Condition',
+        'Purchase Price', 'Shipping Cost', 'Listing Fee', 'Processing Fee', 
+        'Storage Cost', 'Other Expenses', 'Target Price', 'Final Sold Price',
         'Potential Profit', 'Actual Profit',
-        'Product URL', 'Report Path', 'Image Count'
+        'Sales Channel', 'Product URL', 'Listing URL',
+        'Tags', 'Notes', 'Storage Location',
+        'Report Path', 'Image Count'
     ]
     
     with open(output_path, 'w', newline='', encoding='utf-8') as csvfile:
@@ -55,13 +58,23 @@ def export_to_csv(output_path: str = None) -> str:
                 'Item Name': item['item_name'],
                 'Category': item.get('category', ''),
                 'Status': item['status'],
+                'Condition': item.get('condition', ''),
                 'Purchase Price': f"{item['purchase_price']:.2f}",
                 'Shipping Cost': f"{item['shipping_cost']:.2f}",
+                'Listing Fee': f"{item.get('listing_fee', 0):.2f}",
+                'Processing Fee': f"{item.get('processing_fee', 0):.2f}",
+                'Storage Cost': f"{item.get('storage_cost', 0):.2f}",
+                'Other Expenses': f"{item.get('other_expenses', 0):.2f}",
                 'Target Price': f"{item['target_price']:.2f}",
                 'Final Sold Price': f"{item['final_sold_price']:.2f}" if item.get('final_sold_price') else '',
                 'Potential Profit': f"{potential_profit:.2f}",
                 'Actual Profit': f"{actual_profit:.2f}" if item['status'] == 'Sold' else '',
+                'Sales Channel': item.get('sales_channel', ''),
                 'Product URL': item.get('product_url', ''),
+                'Listing URL': item.get('listing_url', ''),
+                'Tags': item.get('tags', ''),
+                'Notes': item.get('notes', ''),
+                'Storage Location': item.get('storage_location', ''),
                 'Report Path': item.get('report_path', ''),
                 'Image Count': image_count
             })
@@ -178,6 +191,63 @@ def restore_from_json(json_path: str) -> int:
     return restored_count
 
 
+def import_from_csv(csv_path: str) -> tuple[int, int]:
+    """Import items from CSV file
+    
+    Args:
+        csv_path: Path to CSV file
+        
+    Returns:
+        Tuple of (success_count, error_count)
+    """
+    db = Database()
+    success_count = 0
+    error_count = 0
+    
+    with open(csv_path, 'r', encoding='utf-8') as csvfile:
+        reader = csv.DictReader(csvfile)
+        
+        for row in reader:
+            try:
+                item_data = {
+                    'item_name': row.get('Item Name', ''),
+                    'category': row.get('Category', ''),
+                    'purchase_price': float(row.get('Purchase Price', 0)),
+                    'shipping_cost': float(row.get('Shipping Cost', 0)),
+                    'target_price': float(row.get('Target Price', 0)),
+                    'product_url': row.get('Product URL', ''),
+                    'status': row.get('Status', 'Draft'),
+                    'final_sold_price': float(row['Final Sold Price']) if row.get('Final Sold Price') else None,
+                    'listing_fee': float(row.get('Listing Fee', 0)),
+                    'processing_fee': float(row.get('Processing Fee', 0)),
+                    'storage_cost': float(row.get('Storage Cost', 0)),
+                    'other_expenses': float(row.get('Other Expenses', 0)),
+                    'sales_channel': row.get('Sales Channel', ''),
+                    'listing_url': row.get('Listing URL', ''),
+                    'tags': row.get('Tags', ''),
+                    'notes': row.get('Notes', ''),
+                    'condition': row.get('Condition', ''),
+                    'storage_location': row.get('Storage Location', ''),
+                    'image_urls_cache': [],
+                    'selected_images': []
+                }
+                
+                # Validate required fields
+                if not item_data['item_name']:
+                    print(f"Skipping row: Missing item name")
+                    error_count += 1
+                    continue
+                
+                db.add_item(item_data)
+                success_count += 1
+                
+            except Exception as e:
+                print(f"Error importing row: {e}")
+                error_count += 1
+    
+    return success_count, error_count
+
+
 if __name__ == "__main__":
     # CLI interface for export utilities
     import sys
@@ -189,6 +259,7 @@ if __name__ == "__main__":
         print("  python export_utils.py json [output.json]")
         print("  python export_utils.py backup [backup_dir]")
         print("  python export_utils.py restore <backup.json>")
+        print("  python export_utils.py import <items.csv>")
         sys.exit(1)
     
     command = sys.argv[1].lower()
@@ -215,6 +286,13 @@ if __name__ == "__main__":
                 sys.exit(1)
             count = restore_from_json(sys.argv[2])
             print(f"✓ Restored {count} items")
+        
+        elif command == "import":
+            if len(sys.argv) < 3:
+                print("Error: CSV file path required")
+                sys.exit(1)
+            success, errors = import_from_csv(sys.argv[2])
+            print(f"✓ Imported {success} items ({errors} errors)")
         
         else:
             print(f"Error: Unknown command '{command}'")
