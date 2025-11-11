@@ -268,36 +268,36 @@ if __name__ == "__main__":
         if command == "csv":
             output = sys.argv[2] if len(sys.argv) > 2 else None
             path = export_to_csv(output)
-            print(f"✓ CSV exported to: {path}")
+            print(f"CSV exported to: {path}")
         
         elif command == "json":
             output = sys.argv[2] if len(sys.argv) > 2 else None
             path = export_to_json(output)
-            print(f"✓ JSON exported to: {path}")
+            print(f"JSON exported to: {path}")
         
         elif command == "backup":
             backup_dir = sys.argv[2] if len(sys.argv) > 2 else None
             path = create_full_backup(backup_dir)
-            print(f"✓ Full backup created: {path}")
+            print(f"Full backup created: {path}")
         
         elif command == "restore":
             if len(sys.argv) < 3:
                 print("Error: JSON file path required")
                 sys.exit(1)
             count = restore_from_json(sys.argv[2])
-            print(f"✓ Restored {count} items")
+            print(f"Restored {count} items")
         
         elif command == "import":
             if len(sys.argv) < 3:
                 print("Error: CSV file path required")
                 sys.exit(1)
             success, errors = import_from_csv(sys.argv[2])
-            print(f"✓ Imported {success} items ({errors} errors)")
+            print(f"Imported {success} items ({errors} errors)")
         
         else:
             print(f"Error: Unknown command '{command}'")
             sys.exit(1)
     
     except Exception as e:
-        print(f"✗ Error: {e}")
+        print(f"Error: {e}")
         sys.exit(1)

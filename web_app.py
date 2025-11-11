@@ -320,11 +320,32 @@ def master_report():
                 report_path = generator.generate_report(item)
                 db.update_report_path(item['id'], report_path)
         
-        # Generate master index
+        # Generate master index with web_mode=True for Flask routes
         items = db.get_all_items()
-        index_path = generator.generate_master_index(items)
+        index_path = generator.generate_master_index(items, web_mode=True)
         
         return send_file(index_path)
+    except Exception as e:
+        return f"Error: {str(e)}", 500
+
+
+@app.route('/reports/item/<int:item_id>')
+def item_report(item_id):
+    """Serve individual item report"""
+    try:
+        item = db.get_item(item_id)
+        if not item:
+            return "Item not found", 404
+        
+        # Generate report if it doesn't exist
+        if not item.get('report_path') or not os.path.exists(item.get('report_path', '')):
+            generator = ReportGenerator()
+            report_path = generator.generate_report(item)
+            db.update_report_path(item_id, report_path)
+        else:
+            report_path = item['report_path']
+        
+        return send_file(report_path)
     except Exception as e:
         return f"Error: {str(e)}", 500
 

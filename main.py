@@ -67,12 +67,12 @@ class DashboardScreen(Screen):
         yield Header()
         yield Container(
             Horizontal(
-                Button("🌐 Web App", id="web-app-btn", variant="success"),
-                Button("📊 Analytics", id="analytics-btn", variant="primary"),
-                Button("💾 Export CSV", id="export-btn"),
-                Button("🔄 Backup", id="backup-btn"),
-                Button("📑 Master Index", id="master-btn"),
-                Button("🗑️ Delete All", id="delete-all-btn", variant="error"),
+                Button("Web App", id="web-app-btn", variant="success"),
+                Button("Analytics", id="analytics-btn", variant="primary"),
+                Button("Export CSV", id="export-btn"),
+                Button("Backup", id="backup-btn"),
+                Button("Master Index", id="master-btn"),
+                Button("Delete All", id="delete-all-btn", variant="error"),
                 id="action-bar"
             ),
             Static(id="stats-panel"),
@@ -310,7 +310,7 @@ ROI: {stats['roi']:.1f}%"""
             # Also generate master index
             try:
                 index_path = generator.generate_master_index(items)
-                self.app.notify(f"✓ Generated {success_count} reports + master index!")
+                self.app.notify(f"Generated {success_count} reports + master index!")
                 
                 # Try to open the master index
                 try:
@@ -424,7 +424,7 @@ ROI: {stats['roi']:.1f}%"""
                     if error_count > 0:
                         self.app.notify(f"Deleted {deleted_count} items ({error_count} errors)", severity="warning")
                     else:
-                        self.app.notify(f"✓ Deleted all {deleted_count} items")
+                        self.app.notify(f"Deleted all {deleted_count} items")
                         
                 except Exception as e:
                     self.app.notify(f"Error deleting items: {str(e)}", severity="error")
@@ -432,7 +432,7 @@ ROI: {stats['roi']:.1f}%"""
         self.app.push_screen(
             ConfirmDialog(
                 f"Delete ALL {item_count} items?\n\nThis will delete:\n- All database records\n- All images\n- All reports\n\nThis CANNOT be undone!",
-                "⚠️ DELETE ALL ITEMS"
+                "DELETE ALL ITEMS"
             ),
             handle_confirm
         )

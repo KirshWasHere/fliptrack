@@ -116,13 +116,7 @@ def generate_sample_data():
         item_id = db.add_item(item)
         potential_profit = item['target_price'] - item['purchase_price'] - item['shipping_cost']
         
-        status_emoji = {
-            'Draft': '📝',
-            'Listed': '🏷️',
-            'Sold': '✅'
-        }
-        
-        print(f"{status_emoji[item['status']]} Added: {item['item_name']}")
+        print(f"[{item['status']}] Added: {item['item_name']}")
         print(f"   ID: {item_id} | Potential Profit: ${potential_profit:.2f}")
         
         if item['status'] == 'Sold' and item['final_sold_price']:

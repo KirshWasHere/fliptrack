@@ -74,8 +74,13 @@ class ReportGenerator:
         except Exception as e:
             raise Exception(f"Failed to generate report: {str(e)}")
     
-    def generate_master_index(self, items: List[Dict]) -> str:
-        """Generate a master index HTML file linking to all item reports"""
+    def generate_master_index(self, items: List[Dict], web_mode: bool = False) -> str:
+        """Generate a master index HTML file linking to all item reports
+        
+        Args:
+            items: List of item dictionaries
+            web_mode: If True, generates links for Flask routes instead of file paths
+        """
         try:
             template_str = self._get_index_template()
             template = Template(template_str)
@@ -94,7 +99,7 @@ class ReportGenerator:
                     'actual_profit': actual_profit
                 })
             
-            html_content = template.render(items=items_with_profits)
+            html_content = template.render(items=items_with_profits, web_mode=web_mode)
             
             index_path = self.reports_dir / "index.html"
             with open(index_path, 'w', encoding='utf-8') as f:
@@ -509,7 +514,11 @@ class ReportGenerator:
                         </td>
                         <td>
                             {% if item.report_path %}
+                            {% if web_mode %}
+                            <a href="/reports/item/{{ item.id }}" class="item-link">View</a>
+                            {% else %}
                             <a href="./item_{{ item.id }}_report.html" class="item-link">View</a>
+                            {% endif %}
                             {% else %}
                             -
                             {% endif %}
